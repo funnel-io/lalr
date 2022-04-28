@@ -37,10 +37,6 @@ program
   .option(
     "--build <yarn command>",
     "A command to run if you want nodemon to build your lambda before running it."
-  )
-  .option(
-    "--build-src <path>",
-    "If using a build tool, specify which directory to listen to changes."
   );
 
 program.parse(process.argv);
@@ -51,13 +47,7 @@ const buildLanguage = options["buildLanguage"];
 
 let n: null | typeof nodemon = null;
 if (options["build"]) {
-  console.log(
-    "Starting nodemon at",
-    cwd,
-    "executing",
-    options["build"],
-    "ignoring dist"
-  );
+  console.log("Starting nodemon at", cwd, "executing", options["build"]);
   const opts: Settings = {
     runOnChangeOnly: true,
     cwd: cwd,
