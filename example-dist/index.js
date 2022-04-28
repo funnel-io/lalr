@@ -1,5 +1,5 @@
 module.exports = {
-  rofl: (event, context) => {
+  myHandler: (event, context) => {
     console.log("event", event, context);
     return {
       statusCode: 410,

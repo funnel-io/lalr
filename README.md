@@ -28,12 +28,18 @@ AWS' `sam` has a CLI tool has a command `sam local start-api`, that will take a 
 
 ### TypeScript
 
-`$ yarn @funnel-io/lalr --lambda-path dist/index.js --lambda-handler lambdaHandler --build-langauge ts --build "yarn tsc"`
+`$ yarn lalr --lambda-path dist/index.js --lambda-handler lambdaHandler --build-language ts --build "yarn tsc"`
 
 `$ curl http://localhost:8080`
 
 ### JavaScript
 
-`$ yarn @funnel-io/lalr --lambda-path dist/index.js --lambda-handler lambdaHandler --build-langauge js`
+`$ yarn lalr --lambda-path dist/index.js --lambda-handler lambdaHandler --build-language js`
 
 `$ curl http://localhost:8080`
+
+### Run example lambda
+
+`$ yarn lalr --lambda-path example-dist/index.js --lambda-handler myHandler --build-language js`
+
+`$ curl -H "x-hello: test" "http://localhost:8080?queryParam=hello"`
