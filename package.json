@@ -1,9 +1,11 @@
 {
   "name": "@funnel-io/lalr",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "main": "lib/index.js",
   "license": "MIT",
-  "bin": "./lib/index.js",
+  "bin": {
+    "lalr": "./lib/index.js"
+  },
   "scripts": {
     "copy-adapters": "cp -r ./src/adapters ./lib/",
     "build": "esbuild src/watcher.ts --bundle --outfile=lib/index.js --platform=node --external:fsevents --external:nodemon && yarn copy-adapters"
