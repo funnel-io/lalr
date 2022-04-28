@@ -1,6 +1,6 @@
 {
   "name": "@funnel-io/lalr",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "main": "src/watcher.ts",
   "license": "MIT",
   "bin": "./lib/index.js",

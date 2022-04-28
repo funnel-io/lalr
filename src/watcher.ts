@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import nodemon from "nodemon";
 import type { Settings } from "nodemon";
 import fastify, { FastifyRequest, FastifyReply } from "fastify";
