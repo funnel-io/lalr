@@ -6,7 +6,7 @@ Runs your lambda locally with hot reloading through an API-gateway mock.
 
 ## Features
 
-- Is able to listen to your source code and react to changes. Is also to compile your code.
+- Is able to listen to your source code and react to changes. Is also able to compile your code when that happens.
 - Starts a web server at 127.0.0.1:8080 and will through various adapters run your code and return it the HTTP client.
 
 Language support:
