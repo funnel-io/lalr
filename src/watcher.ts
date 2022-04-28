@@ -1,0 +1,251 @@
+import nodemon from "nodemon";
+import type { Settings } from "nodemon";
+import fastify, { FastifyRequest, FastifyReply } from "fastify";
+import type { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
+import { spawn } from "child_process";
+import net from "net";
+import { Command } from "commander";
+
+const executableByMethod = {
+  js: "node",
+};
+const methods = {
+  js: "adapters/run-js.js",
+};
+const fileTypesByLanguage = {
+  ts: "ts,js",
+};
+
+const runTimeFileType = {
+  ts: "js",
+};
+
+const program = new Command();
+program
+  .name("lambda-watcher")
+  .description("Monitors your code and automatically hot-reloads your lambda")
+  .version("0.1.0")
+  .requiredOption("--lambda-path <path>", "The path of the actualy file to run")
+  .requiredOption(
+    "--lambda-handler <function>",
+    "The handler/function to run of the lambda path"
+  )
+  .requiredOption(
+    "--build-language <programming language>",
+    "The language of your lambda. Used to watch specific filetypes."
+  )
+  .option(
+    "--build <yarn command>",
+    "A command to run if you want nodemon to build your lambda before running it."
+  )
+  .option(
+    "--build-src <path>",
+    "If using a build tool, specify which directory to listen to changes."
+  );
+
+program.parse(process.argv);
+
+const options = program.opts();
+const cwd = process.cwd();
+const buildLanguage = options["buildLanguage"];
+
+let n: null | typeof nodemon = null;
+if (options["build"]) {
+  console.log(
+    "Starting nodemon at",
+    cwd,
+    "executing",
+    options["build"],
+    "ignoring dist"
+  );
+  const opts: Settings = {
+    runOnChangeOnly: true,
+    cwd: cwd,
+    exec: options["build"],
+    ignore: ["dist"],
+    ext: fileTypesByLanguage[buildLanguage],
+  };
+  console.log("Nodemon settings", opts);
+  n = nodemon(opts)
+    .on("start", () => {
+      console.log("nodemon start");
+    })
+    .on("log", (log) => {
+      console.log(log["colour"]);
+    });
+}
+
+const server = fastify();
+
+server.all("/*", async (request: FastifyRequest, reply: FastifyReply) => {
+  const event = createEvent(request);
+  const response = await runLambda(event);
+  reply
+    .code(response.statusCode)
+    .headers(response.headers || {})
+    .send(response.body);
+});
+
+function createEvent(request: FastifyRequest): APIGatewayProxyEvent {
+  const headers: Record<string, string> = {};
+  const multiValueHeaders: Record<string, string[]> = {};
+  const queryStringParameters: Record<string, string> = {};
+  const multiValueQueryStringParameters: Record<string, string[]> = {};
+
+  Object.entries(request.headers).forEach(([k, v]) => {
+    if (Array.isArray(v)) {
+      multiValueHeaders[k] = v;
+      headers[k] = v[0];
+    } else {
+      multiValueHeaders[k] = [v];
+      headers[k] = v;
+    }
+  });
+
+  Object.entries(request.query).forEach(([k, v]) => {
+    if (Array.isArray(v)) {
+      queryStringParameters[k] = v[0];
+      multiValueQueryStringParameters[k] = v;
+    } else {
+      queryStringParameters[k] = v;
+      multiValueQueryStringParameters[k] = [v];
+    }
+  });
+
+  return {
+    body: request.body != null ? JSON.stringify(request.body) : null,
+    headers: headers,
+    path: request.routerPath,
+    httpMethod: request.method,
+    isBase64Encoded: false,
+    multiValueHeaders: multiValueHeaders,
+    pathParameters: {},
+    queryStringParameters: queryStringParameters,
+    multiValueQueryStringParameters: multiValueQueryStringParameters,
+    stageVariables: {},
+    requestContext: {
+      accountId: "N/A",
+      apiId: "N/A",
+      authorizer: {},
+      protocol: "N/A",
+      httpMethod: "N/A",
+      identity: {
+        accessKey: "N/A",
+        accountId: "N/A",
+        apiKey: "N/A",
+        apiKeyId: "N/A",
+        caller: "N/A",
+        clientCert: {
+          clientCertPem: "N/A",
+          serialNumber: "N/A",
+          subjectDN: "N/A",
+          issuerDN: "N/A",
+          validity: {
+            notAfter: "N/A",
+            notBefore: "N/A",
+          },
+        },
+        cognitoAuthenticationType: "N/A",
+        cognitoAuthenticationProvider: "N/A",
+        cognitoIdentityId: "N/A",
+        cognitoIdentityPoolId: "N/A",
+        principalOrgId: "N/A",
+        sourceIp: "N/A",
+        user: "N/A",
+        userAgent: "N/A",
+        userArn: "N/A",
+      },
+      path: "N/A",
+      stage: "N/A",
+      requestId: "N/A",
+      requestTimeEpoch: -1,
+      resourceId: "N/A",
+      resourcePath: "N/A",
+      routeKey: "N/A",
+    },
+    resource: "N/A",
+  };
+}
+
+server.listen(8080, (err: any, address: any) => {
+  if (err) {
+    console.error(err);
+    process.exit(1);
+  }
+  console.log(`Server listening at ${address}`);
+});
+
+async function runLambda(
+  event: APIGatewayProxyEvent
+): Promise<APIGatewayProxyResult> {
+  const context = JSON.stringify({ ranLocally: "yes" });
+  let output: APIGatewayProxyResult = {
+    statusCode: 500,
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      error: "Internal server error",
+    }),
+  };
+
+  const socketServer = net.createServer(function (socket) {
+    socket.setEncoding("utf8");
+    socket.on("data", (m: any) => {
+      output = JSON.parse(m);
+      socket.end();
+      socket.destroy();
+    });
+
+    socket.pipe(socket);
+  });
+  socketServer.listen(1337, "127.0.0.1");
+
+  const runTimeLanguage = runTimeFileType[buildLanguage] || buildLanguage;
+
+  const executable = executableByMethod[runTimeLanguage];
+  const res = spawn(
+    executable,
+    [
+      __dirname + "/" + methods[runTimeLanguage],
+      cwd,
+      options["lambdaPath"],
+      options["lambdaHandler"],
+      JSON.stringify(event),
+      context,
+    ],
+    {}
+  );
+  res.stdout.on("data", (data) => {
+    console.log(data.toString());
+  });
+  res.stderr.on("data", (data) => {
+    console.log(data.toString());
+  });
+
+  let exited = false;
+  res.on("exit", () => {
+    exited = true;
+  });
+
+  while (!exited) {
+    await sleep(100);
+  }
+
+  await sleep(100);
+  socketServer.close();
+  await sleep(100);
+
+  return output;
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+process.on("SIGINT", function () {
+  console.log("Caught interrupt signal");
+  server.close();
+  if (n != null) {
+    n.emit("quit");
+  }
+  process.exit(0);
+});
