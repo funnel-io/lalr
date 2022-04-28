@@ -3,3 +3,4 @@ node_modules
 get_secrets.sh
 .npmrc
 .yarnrc
+__pycache__

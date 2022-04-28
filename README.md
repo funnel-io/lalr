@@ -13,6 +13,7 @@ Language support:
 
 - JavaScript
 - TypeScript
+- Python
 
 ## Dependencies
 
@@ -30,13 +31,13 @@ AWS' `sam` has a CLI tool has a command `sam local start-api`, that will take a 
 
 `$ yarn lalr --lambda-path dist/index.js --lambda-handler lambdaHandler --build-language ts --build "yarn tsc"`
 
-`$ curl http://localhost:8080`
-
 ### JavaScript
 
 `$ yarn lalr --lambda-path dist/index.js --lambda-handler lambdaHandler --build-language js`
 
-`$ curl http://localhost:8080`
+### Python
+
+`$ yarn lalr --lambda-path handler.py --lambda-handler handler --build-language python`
 
 ### Run example lambda
 

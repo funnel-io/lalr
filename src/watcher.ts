@@ -9,12 +9,15 @@ import { Command } from "commander";
 
 const executableByMethod = {
   js: "node",
+  py: "python",
 };
 const methods = {
   js: "adapters/run-js.js",
+  py: "adapters/run-python.py",
 };
 const fileTypesByLanguage = {
   ts: "ts,js",
+  py: "py",
 };
 
 const runTimeFileType = {
@@ -195,6 +198,7 @@ async function runLambda(
   const runTimeLanguage = runTimeFileType[buildLanguage] || buildLanguage;
 
   const executable = executableByMethod[runTimeLanguage];
+  console.log("running ", executable);
   const res = spawn(
     executable,
     [
