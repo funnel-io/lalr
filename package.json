@@ -22,6 +22,9 @@
     "esbuild": "^0.14.38",
     "nodemon": "^2.0.15"
   },
+  "files": [
+    "lib/adapters"
+  ],
   "repository": {
     "type": "git",
     "url": "git://github.com/funnel-io/lalr"
