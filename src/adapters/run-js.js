@@ -13,7 +13,10 @@ let [
 ] = args;
 
 // console.log("Running lambda", cwd, path, handler, event, context);
-const output = require(cwd + "/" + path)[handler](event, context);
+const output = require(cwd + "/" + path)[handler](
+  JSON.parse(event),
+  JSON.parse(context)
+);
 
 var client = new net.Socket();
 
