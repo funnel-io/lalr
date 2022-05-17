@@ -41,12 +41,23 @@ program
   .option(
     "--build <yarn command>",
     "A command to run if you want nodemon to build your lambda before running it."
+  )
+  .option(
+    "--cwd <directory>",
+    "A directory to cd to before watching and running the lambda."
+  )
+  .option("--port <port>", "The port to listen to. Default 8080.", "8080")
+  .option(
+    "--host <url>",
+    "The host to listen to. Default 127.0.0.1.",
+    "127.0.0.1"
   );
 
 program.parse(process.argv);
 
 const options = program.opts();
-const cwd = process.cwd();
+console.log(options);
+const cwd = options.cwd || process.cwd();
 const buildLanguage = options["buildLanguage"];
 
 let n: null | typeof nodemon = null;
@@ -72,6 +83,7 @@ if (options["build"]) {
 const server = fastify();
 
 server.all("/*", async (request: FastifyRequest, reply: FastifyReply) => {
+  console.log("fastify request", request);
   const event = createEvent(request);
   const response = await runLambda(event);
   reply
@@ -106,10 +118,14 @@ function createEvent(request: FastifyRequest): APIGatewayProxyEvent {
     }
   });
 
+  const getPathOfURL = (x: string): string => {
+    return x.replace(/^\/*/, "/").split("?")[0];
+  };
+
   return {
     body: request.body != null ? JSON.stringify(request.body) : null,
     headers: headers,
-    path: request.routerPath,
+    path: getPathOfURL(request.raw.url ?? ""),
     httpMethod: request.method,
     isBase64Encoded: false,
     multiValueHeaders: multiValueHeaders,
@@ -161,13 +177,17 @@ function createEvent(request: FastifyRequest): APIGatewayProxyEvent {
   };
 }
 
-server.listen(8080, (err: any, address: any) => {
-  if (err) {
-    console.error(err);
-    process.exit(1);
+server.listen(
+  parseInt(options.port),
+  options.host,
+  (err: any, address: any) => {
+    if (err) {
+      console.error(err);
+      process.exit(1);
+    }
+    console.log(`Server listening at ${address}`);
   }
-  console.log(`Server listening at ${address}`);
-});
+);
 
 async function runLambda(
   event: APIGatewayProxyEvent

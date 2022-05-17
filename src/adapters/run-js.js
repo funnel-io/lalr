@@ -13,6 +13,7 @@ let [
 ] = args;
 
 // console.log("Running lambda", cwd, path, handler, event, context);
+console.log("cwd", cwd);
 const output = require(cwd + "/" + path)[handler](
   JSON.parse(event),
   JSON.parse(context)
