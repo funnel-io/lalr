@@ -28,7 +28,7 @@ const program = new Command();
 program
   .name("lambda-watcher")
   .description("Monitors your code and automatically hot-reloads your lambda")
-  .version("0.1.0")
+  .version(process.env.VERSION) // Will be compiled with esbuild!
   .requiredOption("--lambda-path <path>", "The path of the actualy file to run")
   .requiredOption(
     "--lambda-handler <function>",
