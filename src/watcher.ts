@@ -233,7 +233,6 @@ async function runLambda(
       data.toString().split("\n").forEach(console.log);
   });
   res.stderr.on("data", (data) => {
-    console.log('subprocess stderr: ', data.toString());
       data.toString().split("\n").forEach(console.log);
   });
 
