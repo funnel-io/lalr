@@ -1,6 +1,6 @@
 {
   "name": "@funnel-io/lalr",
-  "version": "0.0.13",
+  "version": "0.0.14",
   "main": "lib/index.js",
   "license": "MIT",
   "bin": {
