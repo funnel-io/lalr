@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 import nodemon from "nodemon";
 import type { Settings } from "nodemon";
 import fastify, { FastifyRequest, FastifyReply } from "fastify";
@@ -7,36 +6,33 @@ import { spawn } from "child_process";
 import net from "net";
 import { Command } from "commander";
 
-const executableByMethod = {
-  js: "node",
-  py: "python",
-};
 const methods = {
-  js: "adapters/run-js.js",
-  py: "adapters/run-python.py",
-};
-const fileTypesByLanguage = {
-  ts: "ts,js",
-  py: "py",
+  node: "adapters/run-js.js",
+  python: "adapters/run-python.py",
 };
 
-const runTimeFileType = {
-  ts: "js",
-};
 
 const program = new Command();
 program
   .name("lambda-watcher")
   .description("Monitors your code and automatically hot-reloads your lambda")
   .version(process.env.VERSION) // Will be compiled with esbuild!
-  .requiredOption("--lambda-path <path>", "The path of the actualy file to run")
+  .requiredOption("--lambda-path <path>", "The path of the actual file to run")
   .requiredOption(
     "--lambda-handler <function>",
     "The handler/function to run of the lambda path"
   )
   .requiredOption(
-    "--build-language <programming language>",
-    "The language of your lambda. Used to watch specific filetypes."
+    "--executable <executable>",
+    "The executable that should run your lambda."
+  )
+  .requiredOption(
+    "--file-types <file-types>",
+    "The file types that should be watched by nodemon, will in turn reload the setup on changes."
+  )
+  .option(
+    "--build <yarn command>",
+    "A command to run if you want nodemon to build your lambda before running it."
   )
   .option(
     "--build <yarn command>",
@@ -58,7 +54,8 @@ program.parse(process.argv);
 const options = program.opts();
 console.log(options);
 const cwd = options.cwd || process.cwd();
-const buildLanguage = options["buildLanguage"];
+const executable = options["executable"];
+const fileTypes = options["fileTypes"];
 
 let n: null | typeof nodemon = null;
 if (options["build"]) {
@@ -68,7 +65,7 @@ if (options["build"]) {
     cwd: cwd,
     exec: options["build"],
     ignore: ["dist"],
-    ext: fileTypesByLanguage[buildLanguage],
+    ext: fileTypes,
   };
   console.log("Nodemon settings", opts);
   n = nodemon(opts)
@@ -83,7 +80,7 @@ if (options["build"]) {
 const server = fastify();
 
 server.all("/*", async (request: FastifyRequest, reply: FastifyReply) => {
-  console.log("fastify request", request);
+  console.log("fastify request", request.method);
   const event = createEvent(request);
   const response = await runLambda(event);
   reply
@@ -91,6 +88,7 @@ server.all("/*", async (request: FastifyRequest, reply: FastifyReply) => {
     .headers(response.headers || {})
     .send(response.body);
 });
+
 
 function createEvent(request: FastifyRequest): APIGatewayProxyEvent {
   const headers: Record<string, string> = {};
@@ -192,7 +190,7 @@ server.listen(
 async function runLambda(
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> {
-  const context = JSON.stringify({ ranLocally: "yes" });
+  const context = JSON.stringify({ ranLocally: "yes", "aws_request_id": "local" });
   let output: APIGatewayProxyResult = {
     statusCode: 500,
     headers: {
@@ -215,14 +213,14 @@ async function runLambda(
   });
   socketServer.listen(1337, "127.0.0.1");
 
-  const runTimeLanguage = runTimeFileType[buildLanguage] || buildLanguage;
-
-  const executable = executableByMethod[runTimeLanguage];
-  console.log("running ", executable);
+  if (typeof executable === "undefined") {
+      console.log("No executable!, Exiting");
+      return output;
+  }
   const res = spawn(
     executable,
     [
-      __dirname + "/" + methods[runTimeLanguage],
+      __dirname + "/" + methods[executable],
       cwd,
       options["lambdaPath"],
       options["lambdaHandler"],
@@ -232,10 +230,10 @@ async function runLambda(
     {}
   );
   res.stdout.on("data", (data) => {
-    console.log(data.toString());
+    console.log('subprocess stdout: ', data.toString());
   });
   res.stderr.on("data", (data) => {
-    console.log(data.toString());
+    console.log('subprocess stderr: ', data.toString());
   });
 
   let exited = false;

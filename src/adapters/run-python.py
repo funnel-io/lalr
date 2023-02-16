@@ -3,6 +3,7 @@ import socket
 import sys
 import importlib.util
 import os.path
+from dataclasses import dataclass
 import inspect
 
 
@@ -17,13 +18,26 @@ spec.loader.exec_module(code)
 
 fn = getattr(code, handler)
 
+@dataclass
+class AWSContext:
+    aws_request_id: str
+
+    @staticmethod
+    def from_input(lalr_input):
+        return AWSContext(
+            aws_request_id=lalr_input["aws_request_id"],
+        )
+
+
 arg_inspection = inspect.getfullargspec(fn)
 
 if len(arg_inspection.args) == 0:
     output = fn()
 elif len(arg_inspection.args) == 1:
+    event = json.loads(event)
     output = fn(event)
 else:
-    output = fn(event, context)
+    event = json.loads(event)
+    output = fn(event, AWSContext.from_input(json.loads(context)))
 
 conn.send(json.dumps(output).encode("utf-8"))

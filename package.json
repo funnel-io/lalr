@@ -1,6 +1,6 @@
 {
   "name": "@funnel-io/lalr",
-  "version": "0.0.11",
+  "version": "0.0.12",
   "main": "lib/index.js",
   "license": "MIT",
   "bin": {
@@ -9,7 +9,7 @@
   "scripts": {
     "prepack": "yarn build",
     "copy-adapters": "cp -r ./src/adapters ./lib/",
-    "build": "esbuild --define:process.env.VERSION=\\\"${npm_package_version}\\\" src/watcher.ts --bundle --outfile=lib/index.js --platform=node --external:fsevents --external:nodemon && yarn copy-adapters"
+    "build": "esbuild --define:process.env.VERSION=\\\"${npm_package_version}\\\" src/*.ts --bundle --outdir=lib --platform=node --external:fsevents --external:nodemon && yarn copy-adapters"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.95",
